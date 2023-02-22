@@ -1,0 +1,53 @@
+name: Commit Stage
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Java 17
+      uses: actions/setup-java@v2
+      with:
+        java-version: 17
+    - name: Install dependencies
+      run: |
+        ./mvnw dependency:resolve
+        ./mvnw verify -B -DskipTests
+    - name: Lint with Checkstyle
+      run: |
+        ./mvnw checkstyle:checkstyle
+    - name: Test with JUnit 5
+      run: |
+        ./mvnw test -B -Dtest=com.example.project.AppTest
+        ./mvnw verify -B -Dtest=com.example.project.AppTest
+
+  create_rc:
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Login to DockerHub
+      if: GitHub.event_name != 'pull_request'
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: true
+        tags: admogar/dockertests:1.0
