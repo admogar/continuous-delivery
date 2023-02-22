@@ -1,0 +1,33 @@
+name: Acceptance Stage
+
+on:
+  workflow_run:
+    workflows: ['Commit Stage']
+    types:
+      - completed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      bookstore:
+        image: 'admogar/dockertests:1.0'
+        ports:
+          - 5000:5000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          java-version: 17
+      - name: Install dependencies
+        run: |
+          mvn dependency:resolve
+      - name: Acceptance Tests
+        run: mvn test -Dtest=AcceptanceTest
+        env:
+          BOOKSTORE_HOST: localhost
+          BOOKSTORE_PORT: 5000
